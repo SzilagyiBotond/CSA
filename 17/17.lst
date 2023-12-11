@@ -1,0 +1,60 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit,scanf,fopen,fclose,fprintf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import scanf msvcrt.dll
+    11                                  import fopen msvcrt.dll
+    12                                  import fclose msvcrt.dll
+    13                                  import fprintf msvcrt.dll
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 31372E74787400              output_file db "17.txt",0
+    18 00000007 FFFFFFFF                    output_file_descriptor dd -1
+    19 0000000B 7700                        output_acces_mode db "w",0
+    20 0000000D 00000000                    numar dd 0
+    21 00000011 256400                      input_format db "%d",0
+    22 00000014 25642000                    format db "%d ",0
+    23                                  ; our code starts here
+    24                                  segment code use32 class=code
+    25                                      start:
+    26                                          ; ...
+    27 00000000 68[0B000000]                    push dword output_acces_mode
+    28 00000005 68[00000000]                    push dword output_file
+    29 0000000A FF15[00000000]                  call [fopen]
+    30 00000010 83C408                          add esp,4*2
+    31 00000013 A3[07000000]                    mov [output_file_descriptor],eax
+    32 00000018 83F800                          cmp eax,0
+    33 0000001B 7452                            je final
+    34                                          citire:
+    35 0000001D 68[0D000000]                    push dword numar
+    36 00000022 68[11000000]                    push dword input_format
+    37 00000027 FF15[00000000]                  call [scanf]
+    38 0000002D 83C408                          add esp,4*2
+    39 00000030 833D[0D000000]00                cmp dword[numar],0
+    40 00000037 7436                            je final
+    41 00000039 66A1[0D000000]                  mov ax,[numar]
+    42 0000003F 668B15[0F000000]                mov dx,[numar+2]
+    43 00000046 66BB0700                        mov bx,7
+    44 0000004A 66F7F3                          div bx
+    45 0000004D 6683FA00                        cmp dx,0
+    46 00000051 751A                            jne dont_add
+    47 00000053 FF35[0D000000]                  push dword [numar]
+    48 00000059 68[14000000]                    push dword format
+    49 0000005E FF35[07000000]                  push dword [output_file_descriptor]
+    50 00000064 FF15[00000000]                  call [fprintf]
+    51 0000006A 83C40C                          add esp,4*3
+    52                                          dont_add:
+    53 0000006D EBAE                            jmp citire
+    54                                          final:
+    55 0000006F FF35[07000000]                  push dword [output_file_descriptor]
+    56 00000075 FF15[00000000]                  call [fclose]
+    57 0000007B 83C404                          add esp,4
+    58                                          ; exit(0)
+    59 0000007E 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    60 00000080 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

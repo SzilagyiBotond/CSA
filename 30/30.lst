@@ -1,0 +1,87 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit,fopen,fprintf,fclose,scanf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fprintf msvcrt.dll
+    13                                  import scanf msvcrt.dll
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 <res 00000064>              input_word resb 100
+    18 00000064 257300                      input_format db "%s",0
+    19 00000067 6F75747075742E7478-         output_file db "output.txt",0
+    19 00000070 7400               
+    20 00000072 7700                        output_acces_mode db "w",0
+    21 00000074 FFFFFFFF                    output_file_descriptor dd -1
+    22 00000078 25730A00                    output_format db "%s",10,0
+    23 0000007C 5C6E00                      new_line db "\n",0
+    24 0000007F 24                          hastag db "$"
+    25                                  ; our code starts here
+    26                                  segment code use32 class=code
+    27                                      start:
+    28                                          ; ...
+    29 00000000 68[72000000]                    push dword output_acces_mode
+    30 00000005 68[67000000]                    push dword output_file
+    31 0000000A FF15[00000000]                  call [fopen]
+    32 00000010 83C408                          add esp,4*2
+    33 00000013 A3[74000000]                    mov [output_file_descriptor],eax
+    34 00000018 83F800                          cmp eax,0
+    35 0000001B 747F                            je final
+    36 0000001D B900000000                      mov ecx,0
+    37                                      
+    38                                          read:
+    39 00000022 51                              push ecx
+    40 00000023 68[00000000]                    push dword input_word
+    41 00000028 68[64000000]                    push dword input_format
+    42 0000002D FF15[00000000]                  call [scanf]
+    43 00000033 8A1D[7F000000]                  mov bl,[hastag]
+    44 00000039 3A1D[00000000]                  cmp bl,[input_word]
+    45 0000003F 745B                            je out_of_loop
+    46                                          
+    47 00000041 B964000000                      mov ecx,100
+    48 00000046 BE[00000000]                    mov esi,input_word
+    49                                          contains_digit:
+    50 0000004B 803E30                          cmp byte[esi],48
+    51 0000004E 7C07                            jl not_digit
+    52 00000050 803E39                          cmp byte[esi],57
+    53 00000053 7F02                            jg not_digit
+    54 00000055 EB05                            jmp print_to_file
+    55                                          not_digit:
+    56 00000057 46                              inc esi
+    57 00000058 E2F1                            loop contains_digit
+    58 0000005A EB2D                            jmp dont_print
+    59                                          
+    60                                          print_to_file:
+    61 0000005C 68[00000000]                    push dword input_word
+    62 00000061 68[64000000]                    push dword input_format
+    63 00000066 FF35[74000000]                  push dword [output_file_descriptor]
+    64 0000006C FF15[00000000]                  call [fprintf]
+    65 00000072 83C40C                          add esp,4*3
+    66 00000075 68[7C000000]                    push dword new_line
+    67 0000007A FF35[74000000]                  push dword [output_file_descriptor]
+    68 00000080 FF15[00000000]                  call [fprintf]
+    69 00000086 83C408                          add esp,4*2
+    70                                          dont_print:
+    71 00000089 B964000000                      mov ecx,100
+    72 0000008E BE[00000000]                    mov esi,input_word
+    73                                          clear:
+    74 00000093 C60600                          mov byte[esi],0
+    75 00000096 46                              inc esi
+    76 00000097 E2FA                            loop clear
+    77 00000099 59                              pop ecx
+    78 0000009A E286                            loop read
+    79                                          out_of_loop:
+    80                                          final:
+    81 0000009C FF35[74000000]                  push dword [output_file_descriptor]
+    82 000000A2 FF15[00000000]                  call [fclose]
+    83 000000A8 83C404                          add esp,4
+    84                                          ; exit(0)
+    85 000000AB 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    86 000000AD FF15[00000000]                  call    [exit]       ; call exit to terminate the program

@@ -1,0 +1,99 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit,printf,fread,fclose,fopen               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fread msvcrt.dll
+    13                                  import printf msvcrt.dll
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 696E7075742E747874-         input_file_name db "input.txt",0
+    17 00000009 00                 
+    18 0000000A 7200                        input_file_acces_mode db "r",0
+    19 0000000C FFFFFFFF                    input_file_descriptor dd -1
+    20 00000010 00000000                    number_digits dd 0
+    21 00000014 00000000                    biggest_number dd 0
+    22 00000018 2D00                        line db "-",0
+    23                                      len equ 100
+    24 0000001A <res 00000064>              string resb 100
+    25 0000007E 01000000                    szorzo dd 1
+    26 00000082 256400                      output db "%d",0
+    27 00000085 0A000000                    constant dd 10
+    28                                  ; our code starts here ; 48 - 0 digit
+    29                                  segment code use32 class=code
+    30                                      start:
+    31                                          ; ...
+    32 00000000 68[0A000000]                    push dword input_file_acces_mode
+    33 00000005 68[00000000]                    push dword input_file_name
+    34 0000000A FF15[00000000]                  call [fopen]
+    35 00000010 83C408                          add esp,4*2
+    36 00000013 A3[0C000000]                    mov [input_file_descriptor],eax
+    37 00000018 83F800                          cmp eax,0
+    38 0000001B 0F84B5000000                    je final
+    39 00000021 FF35[0C000000]                  push dword [input_file_descriptor]
+    40 00000027 6A64                            push dword len
+    41 00000029 6A01                            push dword 1
+    42 0000002B 68[1A000000]                    push dword string
+    43 00000030 FF15[00000000]                  call [fread]
+    44 00000036 83C410                          add esp,4*4
+    45 00000039 FF35[0C000000]                  push dword [input_file_descriptor]
+    46 0000003F FF15[00000000]                  call [fclose]
+    47 00000045 83C404                          add esp,4
+    48                                          
+    49 00000048 B964000000                      mov ecx,len
+    50 0000004D BE[1A000000]                    mov esi,string
+    51                                          function:
+    52 00000052 A0[18000000]                    mov al,[line]
+    53 00000057 803E00                          cmp byte[esi],0
+    54 0000005A 7466                            je out_of_the_loop
+    55 0000005C 3806                            cmp [esi],al
+    56 0000005E 7408                            je end_of_number
+    57 00000060 FF05[10000000]                  inc dword[number_digits]
+    58 00000066 EB57                            jmp repetitie
+    59                                          
+    60                                          
+    61                                          end_of_number:
+    62 00000068 51                              push ecx
+    63 00000069 8B0D[10000000]                  mov ecx,[number_digits]
+    64 0000006F BB00000000                      mov ebx,0
+    65 00000074 89F7                            mov edi,esi
+    66 00000076 C705[7E000000]0100-             mov dword[szorzo],1
+    66 0000007E 0000               
+    67                                          build_number:
+    68 00000080 83EF01                          sub edi,1
+    69 00000083 B800000000                      mov eax,0
+    70 00000088 8A07                            mov al,[edi]
+    71 0000008A 2C30                            sub al,48
+    72 0000008C F725[7E000000]                  mul dword[szorzo]
+    73 00000092 01C3                            add ebx,eax
+    74 00000094 A1[7E000000]                    mov eax,[szorzo]
+    75 00000099 F725[85000000]                  mul dword [constant]
+    76 0000009F A3[7E000000]                    mov [szorzo],eax
+    77 000000A4 E2DA                            loop build_number
+    78 000000A6 C705[10000000]0000-             mov dword[number_digits],0
+    78 000000AE 0000               
+    79 000000B0 3B1D[14000000]                  cmp ebx,dword[biggest_number]
+    80 000000B6 7E06                            jle not_bigger
+    81 000000B8 891D[14000000]                  mov dword[biggest_number],ebx
+    82                                          not_bigger:
+    83 000000BE 59                              pop ecx
+    84                                          
+    85                                          repetitie:
+    86 000000BF 46                              inc esi
+    87 000000C0 E290                            loop function
+    88                                          out_of_the_loop:
+    89 000000C2 FF35[14000000]                  push dword [biggest_number]
+    90 000000C8 68[82000000]                    push dword output
+    91 000000CD FF15[00000000]                  call [printf]
+    92 000000D3 83C408                          add esp,4*2
+    93                                          final:
+    94                                          ; exit(0)
+    95 000000D6 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    96 000000D8 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

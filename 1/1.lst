@@ -1,0 +1,88 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit,fopen,fread,fclose,printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fread msvcrt.dll
+    12                                  import fclose msvcrt.dll
+    13                                  import printf msvcrt.dll
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 6165696F754145494F-         consoane db "aeiouAEIOU",0
+    17 00000009 5500               
+    18 0000000B 746578742E74787400          input_text db "text.txt",0
+    19 00000014 FFFFFFFF                    input_file_descriptor dd -1
+    20 00000018 7200                        acces_mode db "r",0
+    21 0000001A <res 00000064>              string resb 100
+    22 0000007E 00000000                    nr dd 0
+    23 00000082 256400                      output_format db "%d",0
+    24                                      len equ 100
+    25 00000085 7A00                        end_of_letters db "z",0
+    26 00000087 4100                        start_of_letters db "A",0
+    27                                  ; our code starts here
+    28                                  segment code use32 class=code
+    29                                      start:
+    30                                          ; ...
+    31 00000000 68[18000000]                    push dword acces_mode
+    32 00000005 68[0B000000]                    push dword input_text
+    33 0000000A FF15[00000000]                  call [fopen]
+    34 00000010 83C408                          add esp,4*2
+    35                                          
+    36 00000013 A3[14000000]                    mov [input_file_descriptor],eax
+    37                                          
+    38 00000018 83F800                          cmp eax,0
+    39 0000001B 747C                            je final
+    40                                          
+    41 0000001D FF35[14000000]                  push dword [input_file_descriptor]
+    42 00000023 6A64                            push dword len
+    43 00000025 6A01                            push dword 1
+    44 00000027 68[1A000000]                    push dword string
+    45 0000002C FF15[00000000]                  call [fread]
+    46 00000032 83C410                          add esp,4*4
+    47                                          
+    48 00000035 FF35[14000000]                  push dword [input_file_descriptor]
+    49 0000003B FF15[00000000]                  call [fclose]
+    50 00000041 83C404                          add esp,4
+    51                                          
+    52 00000044 B964000000                      mov ecx,len
+    53 00000049 BE[1A000000]                    mov esi,string
+    54                                          consonant:
+    55 0000004E 803E09                          cmp byte[esi],9
+    56 00000051 7E2F                            jle dont_add
+    57 00000053 8A1D[85000000]                  mov bl,[end_of_letters]
+    58 00000059 381E                            cmp byte[esi],bl
+    59 0000005B 7F25                            jg dont_add
+    60 0000005D 8A1D[87000000]                  mov bl,[start_of_letters]
+    61 00000063 381E                            cmp byte[esi],bl
+    62 00000065 7C1B                            jl dont_add
+    63 00000067 51                              push ecx
+    64 00000068 B90A000000                      mov ecx,10
+    65 0000006D BF[00000000]                    mov edi,consoane
+    66                                          consoana:
+    67 00000072 8A1F                            mov bl,[edi]
+    68 00000074 381E                            cmp byte[esi],bl
+    69 00000076 7409                            je here
+    70 00000078 47                              inc edi
+    71 00000079 E2F7                            loop consoana        
+    72 0000007B FF05[7E000000]                  inc dword[nr]
+    73                                          here:
+    74 00000081 59                              pop ecx
+    75                                          dont_add:
+    76                                          
+    77 00000082 46                              inc esi
+    78 00000083 E2C9                            loop consonant
+    79                                          
+    80 00000085 FF35[7E000000]                  push dword [nr]
+    81 0000008B 68[82000000]                    push dword output_format
+    82 00000090 FF15[00000000]                  call [printf]
+    83 00000096 83C408                          add esp,4*2
+    84                                          final:
+    85                                          ; exit(0)
+    86 00000099 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    87 0000009B FF15[00000000]                  call    [exit]       ; call exit to terminate the program

@@ -1,0 +1,112 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit,fopen,fclose,fread,printf               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  import fopen msvcrt.dll
+    11                                  import fclose msvcrt.dll
+    12                                  import fread msvcrt.dll
+    13                                  import printf msvcrt.dll
+    14                                  ; our data is declared here (the variables needed by our program)
+    15                                  segment data use32 class=data
+    16                                      ; ...
+    17 00000000 696E7075742E747874-         input_file db "input.txt",0
+    17 00000009 00                 
+    18 0000000A 7200                        input_file_acces_mode db "r",0
+    19 0000000C FFFFFFFF                    input_file_descriptor dd -1
+    20 00000010 <res 00000064>              content resb 100
+    21 00000074 2D00                        line db "-",0
+    22 00000076 2E00                        point db ".",0
+    23 00000078 00000000                    nr_of_letters dd 0
+    24 0000007C 00000000                    nr_of_words dd 0
+    25                                      len equ 100
+    26 00000080 6E756D626572206F66-         format2 db "number of words %d, %s",0
+    26 00000089 20776F726473202564-
+    26 00000092 2C20257300         
+    27 00000097 <res 00000064>              lengths resb 100
+    28 000000FB 00                          longest db 0
+    29 000000FC <res 00000064>              longest_word resb 100
+    30                                  ; our code starts here
+    31                                  segment code use32 class=code
+    32                                      start:
+    33                                          ; ...
+    34 00000000 68[0A000000]                    push dword input_file_acces_mode
+    35 00000005 68[00000000]                    push dword input_file
+    36 0000000A FF15[00000000]                  call [fopen]
+    37 00000010 83C408                          add esp,4*2
+    38 00000013 A3[0C000000]                    mov [input_file_descriptor],eax
+    39 00000018 83F800                          cmp eax,0
+    40 0000001B 0F84CC000000                    je final
+    41 00000021 FF35[0C000000]                  push dword [input_file_descriptor]
+    42 00000027 6A64                            push dword len
+    43 00000029 6A01                            push dword 1
+    44 0000002B 68[10000000]                    push dword content
+    45 00000030 FF15[00000000]                  call [fread]
+    46 00000036 83C410                          add esp,4*4
+    47 00000039 FF35[0C000000]                  push dword [input_file_descriptor]
+    48 0000003F FF15[00000000]                  call [fclose]
+    49 00000045 83C404                          add esp,4
+    50 00000048 B964000000                      mov ecx,len
+    51 0000004D BE[10000000]                    mov esi,content
+    52 00000052 BF[10000000]                    mov edi,content
+    53 00000057 BB[97000000]                    mov ebx,lengths
+    54                                          count_words:
+    55                                          
+    56 0000005C 803E00                          cmp byte[esi],0
+    57 0000005F 745B                            je out_of_the_loop
+    58                                          
+    59 00000061 8A06                            mov al,byte[esi]
+    60                                          
+    61 00000063 3805[74000000]                  cmp byte[line],al
+    62 00000069 740A                            je end_of_word
+    63                                          
+    64 0000006B 3805[76000000]                  cmp byte[point],al
+    65 00000071 7402                            je end_of_word
+    66 00000073 EB3E                            jmp no_end
+    67                                          end_of_word:
+    68 00000075 833D[78000000]00                cmp dword[nr_of_letters],0
+    69 0000007C 743B                            je no_word
+    70                                          
+    71 0000007E 8B15[78000000]                  mov edx,[nr_of_letters]
+    72 00000084 8913                            mov [ebx],edx
+    73 00000086 8A15[FB000000]                  mov dl,[longest]
+    74 0000008C 3813                            cmp byte[ebx],dl
+    75 0000008E 7E10                            jle not_bigger
+    76 00000090 8A13                            mov dl ,byte[ebx]
+    77 00000092 8815[FB000000]                  mov [longest],dl
+    78 00000098 89F7                            mov edi,esi
+    79 0000009A 2B3D[78000000]                  sub edi,[nr_of_letters]
+    80                                          not_bigger:
+    81 000000A0 43                              inc ebx
+    82 000000A1 FF05[7C000000]                  inc dword[nr_of_words]
+    83 000000A7 C705[78000000]0000-             mov dword[nr_of_letters],0
+    83 000000AF 0000               
+    84 000000B1 EB06                            jmp no_word
+    85                                          no_end:
+    86 000000B3 FF05[78000000]                  inc dword[nr_of_letters]
+    87                                          no_word:
+    88 000000B9 46                              inc esi
+    89 000000BA E2A0                            loop count_words
+    90                                          out_of_the_loop:
+    91 000000BC B900000000                      mov ecx,0
+    92 000000C1 8A0D[FB000000]                  mov cl,[longest]
+    93 000000C7 BE[FC000000]                    mov esi,longest_word
+    94                                          athelyez:
+    95 000000CC 8A17                            mov dl,[edi]
+    96 000000CE 8816                            mov [esi],dl
+    97 000000D0 47                              inc edi
+    98 000000D1 46                              inc esi
+    99 000000D2 E2F8                            loop athelyez
+   100 000000D4 68[FC000000]                    push dword longest_word
+   101 000000D9 FF35[7C000000]                  push dword [nr_of_words]
+   102 000000DF 68[80000000]                    push dword format2
+   103 000000E4 FF15[00000000]                  call [printf]
+   104 000000EA 83C40C                          add esp,4*3
+   105                                          final:
+   106                                          ; exit(0)
+   107 000000ED 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+   108 000000EF FF15[00000000]                  call    [exit]       ; call exit to terminate the program
