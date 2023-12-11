@@ -1,0 +1,47 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  
+    11                                  ; our data is declared here (the variables needed by our program)
+    12                                  segment data use32 class=data
+    13                                      ; ...
+    14 00000000 010203060207                input db 1,2,3,6,2,7
+    15                                      len equ $-input 
+    16 00000006 <res 00000006>              output resb len
+    17                                  ; our code starts here
+    18                                  segment code use32 class=code
+    19                                      start:
+    20                                          ; ...
+    21 00000000 BE[00000000]                    mov esi,input
+    22 00000005 BF[06000000]                    mov edi,output
+    23 0000000A BB[06000000]                    mov ebx, output
+    24 0000000F BA[06000000]                    mov edx,output
+    25 00000014 B906000000                      mov ecx,len
+    26 00000019 E313                            jecxz skip
+    27                                          myloop:
+    28 0000001B 8A06                                mov al,[esi]
+    29 0000001D 46                                  inc esi
+    30                                              check:
+    31 0000001E 3803                                    cmp [ebx],al
+    32 00000020 740A                                    je dontadd
+    33 00000022 4B                                      dec ebx
+    34 00000023 39D3                                    cmp ebx,edx
+    35 00000025 7DF7                                jge check
+    36 00000027 8807                                mov [edi],al
+    37 00000029 47                                  inc edi
+    38 0000002A 89FB                                mov ebx,edi
+    39                                              dontadd:
+    40 0000002C E2ED                            loop myloop
+    41                                          ; exit(0)
+    42                                          skip:
+    43 0000002E 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    44 00000030 FF15[00000000]                  call    [exit]       ; call exit to terminate the program
+    45                                  
+    46                                          
+    47                                          

@@ -1,0 +1,43 @@
+     1                                  bits 32 ; assembling for the 32 bits architecture
+     2                                  
+     3                                  ; declare the EntryPoint (a label defining the very first instruction of the program)
+     4                                  global start        
+     5                                  
+     6                                  ; declare external functions needed by our program
+     7                                  extern exit               ; tell nasm that exit exists even if we won't be defining it
+     8                                  import exit msvcrt.dll    ; exit is a function that ends the calling process. It is defined in msvcrt.dll
+     9                                                            ; msvcrt.dll contains exit, printf and all the other important C-runtime specific functions
+    10                                  
+    11                                  ; our data is declared here (the variables needed by our program)
+    12                                  segment data use32 class=data
+    13                                      ; ...
+    14 00000000 341267451111222233-         sir dw 1234h,4567h,1111h,2222h,3333h,3444h
+    14 00000009 334434             
+    15                                      len equ ($-sir)/2
+    16                                      d resb 0
+    17                                  ; our code starts here
+    18                                  segment code use32 class=code
+    19                                      start:
+    20                                          ; ...
+    21 00000000 B906000000                      mov ecx, len
+    22 00000005 49                              dec ecx
+    23 00000006 BE[00000000]                    mov esi,sir
+    24 0000000B BF[02000000]                    mov edi ,sir+2
+    25 00000010 B201                            mov dl,1
+    26 00000012 B601                            mov dh,1
+    27 00000014 FC                              cld
+    28                                          myloop:
+    29 00000015 66A7                                cmpsw
+    30 00000017 7E02                                jle add_to_list
+    31 00000019 B200                                mov dl,0
+    32                                              add_to_list:
+    33 0000001B FEC2                                inc dl
+    34 0000001D 38F2                                cmp dl,dh
+    35 0000001F 7C02                                jl no_new_max
+    36 00000021 88D6                                mov dh,dl
+    37                                              no_new_max:
+    38 00000023 E2F0                            loop myloop
+    39 00000025 8835[0C000000]                  mov [d],dh
+    40                                          ; exit(0)
+    41 0000002B 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    42 0000002D FF15[00000000]                  call    [exit]       ; call exit to terminate the program
